@@ -78,7 +78,7 @@
     </section>
     <footer class="page-footer">
       <span>Uma escola melhor se constrói com participação.</span>
-      <button id="show-results" class="results-button" type="button">Exibir resultado</button>
+      <div class="footer-actions"><button id="reset-votes" class="reset-button" type="button">Resetar votos</button><button id="show-results" class="results-button" type="button">Exibir resultado</button></div>
     </footer>
   </main>
 
@@ -99,14 +99,14 @@
     <form id="password-form" class="dialog-content">
       <span class="dialog-icon lock-icon">⌑</span>
       <span class="section-kicker">ACESSO DA FISCALIZAÇÃO</span>
-      <h2>Resultado da eleição</h2>
-      <p>Digite a senha autorizada para consultar a apuração.</p>
+      <h2 id="password-title">Resultado da eleição</h2>
+      <p id="password-description">Digite a senha autorizada para consultar a apuração.</p>
       <label class="field-label" for="admin-password">Senha de acesso</label>
       <input id="admin-password" type="password" autocomplete="current-password" placeholder="Digite a senha" required>
       <p id="password-error" class="error-message" role="alert" hidden>Senha incorreta. Tente novamente.</p>
       <div class="dialog-actions">
         <button id="cancel-password" class="secondary-button" type="button">Cancelar</button>
-        <button class="primary-button" type="submit">Ver resultado</button>
+        <button id="password-submit" class="primary-button" type="submit">Ver resultado</button>
       </div>
     </form>
   </dialog>
