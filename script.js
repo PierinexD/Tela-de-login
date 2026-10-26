@@ -157,7 +157,27 @@
   }
 
   document.querySelector("#show-results").addEventListener("click", () => openAdminPrompt("results"));
-  document.querySelector("#reset-votes").addEventListener("click", () => openAdminPrompt("reset"));
+  document.querySelector("#reset-votes").addEventListener("click", async () => {
+    try {
+      openAdminPrompt("reset");
+      if (!passwordDialog.open) throw new Error("password_dialog_did_not_open");
+    } catch (_) {
+      // Fallback for browsers or cached markup where the dialog cannot open.
+      const entered = window.prompt("Digite a senha administrativa para resetar a votação:");
+      if (!entered) return;
+      try {
+        await api("results", { password: entered });
+        const accepted = window.confirm("ATENÇÃO: isso apagará todos os votos da eleição em todos os dispositivos e não poderá ser desfeito. Deseja realmente zerar a votação?");
+        if (!accepted) return;
+        const reset = await api("reset", { password: entered, confirm: true });
+        showToast("Votação zerada no banco central. Registros removidos: " + (reset.deleted ?? 0) + ".");
+      } catch (error) {
+        showToast(error.status === 401 || error.message === "invalid_admin_password"
+          ? "Senha administrativa incorreta."
+          : "Não foi possível resetar a votação. Verifique a conexão e tente novamente.");
+      }
+    }
+  });
   document.querySelector("#cancel-password").addEventListener("click", () => passwordDialog.close());
 
   document.querySelector("#password-form").addEventListener("submit", async event => {
