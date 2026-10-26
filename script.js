@@ -25,7 +25,7 @@
   async function api(action, payload = {}) {
     const response = await fetch(API_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "apikey": "sb_publishable_zBcH6s4BjrVYzBHryXqtng_Eug-0RXz" },
       body: JSON.stringify({ action, ...payload })
     });
     let data;
