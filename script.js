@@ -191,10 +191,15 @@
       if (error.status === 401 || error.message === "invalid_admin_password") {
         document.querySelector("#password-error").hidden = false;
         document.querySelector("#admin-password").select();
+      } else if (error.message === "reset_failed") {
+        showToast("O servidor não conseguiu zerar os votos. Nenhum sucesso foi informado; tente novamente.");
+      } else if (error.message === "results_unavailable") {
+        showToast("Não foi possível consultar a apuração central. Tente novamente.");
       } else {
         showToast("Não foi possível concluir a ação administrativa. Verifique a conexão e tente novamente.");
       }
     } finally {
+      adminPassword = "";
       submitButton.disabled = false;
     }
   });
