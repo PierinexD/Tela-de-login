@@ -109,12 +109,20 @@
     document.querySelector("#vote-title").scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
-  document.querySelector("#show-results").addEventListener("click", () => {
+  function openAdminPrompt(action) {
+    adminAction = action;
+    document.querySelector("#password-title").textContent = action === "reset" ? "Resetar votação" : "Resultado da eleição";
+    document.querySelector("#password-description").textContent = action === "reset"
+      ? "Digite a senha da fiscalização para habilitar a limpeza dos votos."
+      : "Digite a senha autorizada para consultar a apuração.";
+    document.querySelector("#password-submit").textContent = action === "reset" ? "Continuar" : "Ver resultado";
     document.querySelector("#admin-password").value = "";
     document.querySelector("#password-error").hidden = true;
     passwordDialog.showModal();
     setTimeout(() => document.querySelector("#admin-password").focus(), 50);
-  });
+  }
+  document.querySelector("#show-results").addEventListener("click", () => openAdminPrompt("results"));
+  document.querySelector("#reset-votes").addEventListener("click", () => openAdminPrompt("reset"));
   document.querySelector("#cancel-password").addEventListener("click", () => passwordDialog.close());
   document.querySelector("#password-form").addEventListener("submit", event => {
     event.preventDefault();
@@ -125,6 +133,18 @@
       return;
     }
     passwordDialog.close();
+    if (adminAction === "reset") {
+      const accepted = window.confirm("ATENÇÃO: isso apagará todos os votos registrados neste navegador e não poderá ser desfeito. Exporte a apuração antes, se precisar guardá-la. Deseja realmente zerar a votação?");
+      if (!accepted) return;
+      try {
+        saveVotes(Object.fromEntries(slates.map(s => [s.id, 0])));
+        renderResults();
+        showToast("Votos zerados neste navegador.");
+      } catch (_) {
+        showToast("Não foi possível zerar os votos. Verifique o armazenamento do navegador.");
+      }
+      return;
+    }
     renderResults();
     resultsDialog.showModal();
   });
