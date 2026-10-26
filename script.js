@@ -1,12 +1,13 @@
 (() => {
   "use strict";
-  const STORAGE_KEY = "gremio-eleicao-votos-v1";
-  const ADMIN_PASSWORD = "nsa019021";
+
+  const API_URL = "https://acnrouwnffgcofqicjjs.supabase.co/functions/v1/election-api";
   const slates = [
     { id: "coracoes", name: "Corações Avante", number: "01", symbol: "♥" },
     { id: "sociedade", name: "Sociedade Estudantil", number: "02", symbol: "✦" },
     { id: "revolucao", name: "Revolução Jovem", number: "03", symbol: "⚡" }
   ];
+  const slateById = Object.fromEntries(slates.map(s => [s.id, s]));
   const cards = [...document.querySelectorAll("[data-slate]")];
   const confirmVoteButton = document.querySelector("#confirm-vote");
   const selectionStatus = document.querySelector("#selection-status");
@@ -16,27 +17,35 @@
   const successPanel = document.querySelector("#success-panel");
   let selectedSlate = null;
   let confirmedSlate = null;
-  let toastTimer;
+  let pendingRequestId = null;
   let adminAction = "results";
+  let adminPassword = "";
+  let toastTimer;
 
-  function readVotes() {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-      return Object.fromEntries(slates.map(s => [s.id, Number.isFinite(parsed[s.id]) && parsed[s.id] >= 0 ? Math.floor(parsed[s.id]) : 0]));
-    } catch (_) {
-      return Object.fromEntries(slates.map(s => [s.id, 0]));
+  async function api(action, payload = {}) {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, ...payload })
+    });
+    let data;
+    try { data = await response.json(); } catch (_) { data = {}; }
+    if (!response.ok) {
+      const error = new Error(data.error || "request_failed");
+      error.status = response.status;
+      throw error;
     }
+    return data;
   }
-  function saveVotes(votes) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(votes));
-  }
+
   function showToast(message) {
     const toast = document.querySelector("#toast");
     toast.textContent = message;
     toast.classList.add("visible");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast.classList.remove("visible"), 2600);
+    toastTimer = setTimeout(() => toast.classList.remove("visible"), 3200);
   }
+
   function playConfirmationSound() {
     try {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -56,107 +65,152 @@
         oscillator.stop(ctx.currentTime + index * 0.14 + 0.13);
       });
       setTimeout(() => ctx.close(), 700);
-    } catch (_) {
-      // Alguns navegadores bloqueiam áudio; a confirmação visual continua funcionando.
-    }
+    } catch (_) {}
   }
+
+  function makeRequestId() {
+    if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0;
+      return (c === "x" ? r : (r & 3 | 8)).toString(16);
+    });
+  }
+
   function clearSelection() {
     selectedSlate = null;
-    cards.forEach(card => card.setAttribute("aria-pressed", "false"));
+    confirmedSlate = null;
+    pendingRequestId = null;
+    cards.forEach(card => {
+      card.disabled = false;
+      card.setAttribute("aria-pressed", "false");
+    });
     confirmVoteButton.disabled = true;
     selectionStatus.textContent = "Escolha uma chapa para continuar.";
   }
+
   cards.forEach(card => {
     card.addEventListener("click", () => {
       if (!successPanel.hidden) return;
-      selectedSlate = slates.find(s => s.id === card.dataset.slate) || null;
+      selectedSlate = slateById[card.dataset.slate] || null;
       cards.forEach(item => item.setAttribute("aria-pressed", String(item === card)));
       confirmVoteButton.disabled = !selectedSlate;
-      selectionStatus.textContent = selectedSlate ? "Você selecionou: " + selectedSlate.name + ". Confirme quando estiver pronto." : "Escolha uma chapa para continuar.";
+      selectionStatus.textContent = selectedSlate
+        ? "Você selecionou: " + selectedSlate.name + ". Confirme quando estiver pronto."
+        : "Escolha uma chapa para continuar.";
     });
   });
+
   confirmVoteButton.addEventListener("click", () => {
     if (!selectedSlate) return;
     confirmedSlate = selectedSlate;
     document.querySelector("#confirm-heading").textContent = "Confirmar " + selectedSlate.name + "?";
-    document.querySelector("#confirm-copy").textContent = "Confira sua escolha. Depois da confirmação, o voto será registrado e não poderá ser alterado.";
+    document.querySelector("#confirm-copy").textContent = "Confira sua escolha. Depois da confirmação, o voto será registrado no sistema central.";
     confirmDialog.showModal();
   });
-  document.querySelector("#final-confirm").addEventListener("click", event => {
+
+  document.querySelector("#final-confirm").addEventListener("click", async event => {
     event.preventDefault();
-    if (!confirmedSlate) return;
-    const votes = readVotes();
-    votes[confirmedSlate.id] += 1;
+    if (!confirmedSlate || confirmVoteButton.dataset.sending === "true") return;
+    if (!pendingRequestId) pendingRequestId = makeRequestId();
+    const finalButton = document.querySelector("#final-confirm");
+    finalButton.disabled = true;
+    confirmVoteButton.dataset.sending = "true";
     try {
-      saveVotes(votes);
-    } catch (_) {
-      showToast("Não foi possível salvar neste navegador. Verifique as configurações.");
+      await api("vote", { requestId: pendingRequestId, slateId: confirmedSlate.id });
       confirmDialog.close();
-      return;
+      playConfirmationSound();
+      successPanel.hidden = false;
+      selectionStatus.textContent = "Voto registrado no sistema central. Aguarde o fiscal liberar o próximo aluno.";
+      confirmVoteButton.disabled = true;
+      cards.forEach(card => { card.disabled = true; card.setAttribute("aria-pressed", "false"); });
+      showToast("Voto registrado com sucesso!");
+      confirmedSlate = null;
+      pendingRequestId = null;
+    } catch (error) {
+      showToast(error.message === "Failed to fetch"
+        ? "Não foi possível conectar ao servidor. Verifique a internet e tente novamente."
+        : "Não foi possível registrar o voto. Tente novamente; não conte como registrado até aparecer a confirmação.");
+    } finally {
+      finalButton.disabled = false;
+      confirmVoteButton.dataset.sending = "false";
     }
-    confirmDialog.close();
-    playConfirmationSound();
-    successPanel.hidden = false;
-    selectionStatus.textContent = "Voto registrado. Aguarde o fiscal liberar o próximo aluno.";
-    confirmVoteButton.disabled = true;
-    cards.forEach(card => { card.disabled = true; card.setAttribute("aria-pressed", "false"); });
-    showToast("Voto registrado com sucesso!");
-    confirmedSlate = null;
   });
+
   document.querySelector("#next-voter").addEventListener("click", () => {
     successPanel.hidden = true;
-    cards.forEach(card => { card.disabled = false; });
     clearSelection();
     document.querySelector("#vote-title").scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
   function openAdminPrompt(action) {
     adminAction = action;
+    adminPassword = "";
     document.querySelector("#password-title").textContent = action === "reset" ? "Resetar votação" : "Resultado da eleição";
     document.querySelector("#password-description").textContent = action === "reset"
-      ? "Digite a senha da fiscalização para habilitar a limpeza dos votos."
-      : "Digite a senha autorizada para consultar a apuração.";
+      ? "Digite a senha administrativa para habilitar a limpeza dos votos."
+      : "Digite a senha administrativa para consultar a apuração central.";
     document.querySelector("#password-submit").textContent = action === "reset" ? "Continuar" : "Ver resultado";
     document.querySelector("#admin-password").value = "";
     document.querySelector("#password-error").hidden = true;
     passwordDialog.showModal();
     setTimeout(() => document.querySelector("#admin-password").focus(), 50);
   }
+
   document.querySelector("#show-results").addEventListener("click", () => openAdminPrompt("results"));
   document.querySelector("#reset-votes").addEventListener("click", () => openAdminPrompt("reset"));
   document.querySelector("#cancel-password").addEventListener("click", () => passwordDialog.close());
-  document.querySelector("#password-form").addEventListener("submit", event => {
+
+  document.querySelector("#password-form").addEventListener("submit", async event => {
     event.preventDefault();
     const entered = document.querySelector("#admin-password").value;
-    if (entered !== ADMIN_PASSWORD) {
-      document.querySelector("#password-error").hidden = false;
-      document.querySelector("#admin-password").select();
-      return;
-    }
-    passwordDialog.close();
-    if (adminAction === "reset") {
-      const accepted = window.confirm("ATENÇÃO: isso apagará todos os votos registrados neste navegador e não poderá ser desfeito. Exporte a apuração antes, se precisar guardá-la. Deseja realmente zerar a votação?");
-      if (!accepted) return;
-      try {
-        saveVotes(Object.fromEntries(slates.map(s => [s.id, 0])));
-        renderResults();
-        showToast("Votos zerados neste navegador.");
-      } catch (_) {
-        showToast("Não foi possível zerar os votos. Verifique o armazenamento do navegador.");
+    const submitButton = document.querySelector("#password-submit");
+    submitButton.disabled = true;
+    document.querySelector("#password-error").hidden = true;
+    try {
+      if (adminAction === "reset") {
+        await api("results", { password: entered });
+        adminPassword = entered;
+        passwordDialog.close();
+        const accepted = window.confirm("ATENÇÃO: isso apagará todos os votos da eleição em todos os dispositivos e não poderá ser desfeito. Exporte a apuração antes, se precisar guardá-la. Deseja realmente zerar a votação?");
+        if (!accepted) {
+          adminPassword = "";
+          return;
+        }
+        const reset = await api("reset", { password: adminPassword, confirm: true });
+        adminPassword = "";
+        showToast("Votação zerada no banco central. Registros removidos: " + (reset.deleted ?? 0) + ".");
+        return;
       }
-      return;
+
+      const result = await api("results", { password: entered });
+      adminPassword = "";
+      renderResults(result);
+      passwordDialog.close();
+      resultsDialog.showModal();
+    } catch (error) {
+      if (error.status === 401 || error.message === "invalid_admin_password") {
+        document.querySelector("#password-error").hidden = false;
+        document.querySelector("#admin-password").select();
+      } else {
+        showToast("Não foi possível concluir a ação administrativa. Verifique a conexão e tente novamente.");
+      }
+    } finally {
+      submitButton.disabled = false;
     }
-    renderResults();
-    resultsDialog.showModal();
   });
-  function renderResults() {
-    const votes = readVotes();
-    const total = Object.values(votes).reduce((sum, count) => sum + count, 0);
+
+  function getResultRows(result) {
+    const map = Object.fromEntries((result.results || []).map(item => [item.id, Number(item.votes) || 0]));
+    return slates.map(slate => ({ ...slate, votes: map[slate.id] || 0 }));
+  }
+
+  function renderResults(result) {
+    const rows = getResultRows(result);
+    const total = rows.reduce((sum, row) => sum + row.votes, 0);
     const list = document.querySelector("#results-list");
     list.replaceChildren();
-    slates.forEach(slate => {
-      const count = votes[slate.id] || 0;
-      const percent = total ? (count / total) * 100 : 0;
+    rows.forEach(slate => {
+      const percent = total ? (slate.votes / total) * 100 : 0;
       const row = document.createElement("div");
       row.className = "result-row";
       const top = document.createElement("div");
@@ -165,9 +219,9 @@
       name.textContent = "Chapa " + slate.number + " · " + slate.name;
       const countEl = document.createElement("span");
       countEl.className = "result-count";
-      countEl.textContent = count + " (" + percent.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + "%)";
-      top.append(name);
-      row.append(top, countEl);
+      countEl.textContent = slate.votes + " (" + percent.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + "%)";
+      top.append(name, countEl);
+      row.append(top);
       const track = document.createElement("div");
       track.className = "result-track";
       const fill = document.createElement("div");
@@ -178,25 +232,42 @@
       list.append(row);
     });
     document.querySelector("#total-votes").textContent = String(total);
+    document.querySelector(".results-subtitle").textContent = "Apuração centralizada · atualizada no momento da consulta.";
+    document.querySelector(".results-warning").textContent = "Os resultados são consultados no banco central e incluem votos enviados por todos os dispositivos conectados.";
   }
+
   document.querySelector("#close-results").addEventListener("click", () => resultsDialog.close());
-  document.querySelector("#export-results").addEventListener("click", () => {
-    const votes = readVotes();
-    const total = Object.values(votes).reduce((sum, count) => sum + count, 0);
-    const rows = [["Chapa", "Nome", "Votos", "Percentual"]];
-    slates.forEach(s => rows.push([s.number, s.name, String(votes[s.id]), total ? ((votes[s.id] / total) * 100).toFixed(1).replace(".", ",") + "%" : "0%"]));
-    rows.push(["", "Total", String(total), "100%"]);
-    const csv = "\uFEFF" + rows.map(row => row.map(value => '"' + String(value).replace(/"/g, '""') + '"').join(";")).join("\r\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "apuracao-gremio-estudantil.csv";
-    link.click();
-    URL.revokeObjectURL(url);
-  });
-  document.addEventListener("keydown", event => {
-    if (event.key === "Escape") {
-      confirmedSlate = null;
+
+  document.querySelector("#export-results").addEventListener("click", async () => {
+    const password = window.prompt("Confirme a senha administrativa para exportar a apuração atual:");
+    if (!password) return;
+    try {
+      const result = await api("results", { password });
+      const rows = getResultRows(result);
+      const total = rows.reduce((sum, row) => sum + row.votes, 0);
+      const csvRows = [["Chapa", "Nome", "Votos", "Percentual"]];
+      rows.forEach(s => csvRows.push([
+        s.number,
+        s.name,
+        String(s.votes),
+        total ? ((s.votes / total) * 100).toFixed(1).replace(".", ",") + "%" : "0%"
+      ]));
+      csvRows.push(["", "Total", String(total), total ? "100%" : "0%"]);
+      const csv = "\uFEFF" + csvRows.map(row => row.map(value => '"' + String(value).replace(/"/g, '""') + '"').join(";")).join("\r\n");
+      const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "apuracao-gremio-estudantil.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (_) {
+      showToast("Não foi possível exportar. Verifique a senha e a conexão.");
     }
+  });
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") confirmedSlate = null;
   });
 })();
