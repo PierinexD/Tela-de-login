@@ -87,7 +87,7 @@
       <span class="dialog-icon">?</span>
       <span class="section-kicker">CONFIRMAÇÃO DE VOTO</span>
       <h2 id="confirm-heading">Confirmar escolha?</h2>
-      <p id="confirm-copy">Depois de confirmar, seu voto será registrado e não poderá ser alterado nesta sessão.</p>
+      <p id="confirm-copy">Depois de confirmar, seu voto será registrado no sistema central e não poderá ser alterado.</p>
       <div class="dialog-actions">
         <button class="secondary-button" value="cancel">Voltar</button>
         <button id="final-confirm" class="primary-button" value="confirm">Confirmar voto</button>
@@ -100,7 +100,7 @@
       <span class="dialog-icon lock-icon">⌑</span>
       <span class="section-kicker">ACESSO DA FISCALIZAÇÃO</span>
       <h2 id="password-title">Resultado da eleição</h2>
-      <p id="password-description">Digite a senha autorizada para consultar a apuração.</p>
+      <p id="password-description">Digite a senha administrativa para consultar a apuração central.</p>
       <label class="field-label" for="admin-password">Senha de acesso</label>
       <input id="admin-password" type="password" autocomplete="current-password" placeholder="Digite a senha" required>
       <p id="password-error" class="error-message" role="alert" hidden>Senha incorreta. Tente novamente.</p>
@@ -115,10 +115,10 @@
     <div class="dialog-content">
       <span class="section-kicker">APURAÇÃO</span>
       <h2>Resultado da eleição</h2>
-      <p class="results-subtitle">Votos registrados neste navegador.</p>
+      <p class="results-subtitle">Apuração centralizada.</p>
       <div id="results-list" class="results-list"></div>
       <div class="total-votes"><span>Total de votos</span><strong id="total-votes">0</strong></div>
-      <p class="results-warning">Os dados ficam salvos apenas neste navegador e computador. Faça uma cópia da apuração antes de limpar os dados do navegador.</p>
+      <p class="results-warning">Os resultados são consultados no banco central e incluem votos enviados por todos os dispositivos conectados.</p>
       <div class="dialog-actions stacked-mobile">
         <button id="export-results" class="secondary-button" type="button">Baixar apuração CSV</button>
         <button id="close-results" class="primary-button" type="button">Fechar</button>
