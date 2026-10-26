@@ -16,7 +16,8 @@
   const successPanel = document.querySelector("#success-panel");
   let selectedSlate = null;
   let confirmedSlate = null;
-  let toastTimer;\n  let adminAction = "results";
+  let toastTimer;
+  let adminAction = "results";
 
   function readVotes() {
     try {
