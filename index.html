@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1557b0">
+  <title>Eleição do Grêmio Estudantil</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-mark" aria-hidden="true">GE</div>
+    <div class="brand-copy">
+      <span class="eyebrow">PARTICIPAÇÃO • DEMOCRACIA • ESTUDANTES</span>
+      <strong>Eleição do Grêmio Estudantil</strong>
+    </div>
+    <span class="live-pill"><span></span> VOTAÇÃO</span>
+  </header>
+
+  <main class="page-shell">
+    <section class="intro">
+      <div class="intro-copy">
+        <span class="section-kicker">SUA VOZ FAZ A DIFERENÇA</span>
+        <h1>Escolha a chapa<br><span>que representa você.</span></h1>
+        <p>Leia as opções com atenção e selecione apenas uma chapa. Seu voto é importante!</p>
+      </div>
+      <div class="intro-art" aria-hidden="true">
+        <div class="art-circle circle-one"></div>
+        <div class="art-circle circle-two"></div>
+        <div class="ballot-card"><span class="ballot-check">✓</span><span class="ballot-lines"></span><span class="ballot-lines short"></span></div>
+        <span class="star star-one">✦</span><span class="star star-two">✦</span>
+      </div>
+    </section>
+
+    <section class="vote-section" aria-labelledby="vote-title">
+      <div class="section-heading">
+        <div><span class="section-kicker">ELEIÇÃO ESTUDANTIL</span><h2 id="vote-title">Chapas concorrentes</h2></div>
+        <span class="select-hint">Selecione uma opção</span>
+      </div>
+      <div class="slates">
+        <button class="slate-card heart" type="button" data-slate="coracoes" aria-pressed="false">
+          <span class="slate-number">CHAPA 01</span>
+          <span class="slate-symbol" aria-hidden="true">♥</span>
+          <span class="slate-name">Corações Avante</span>
+          <span class="slate-desc">União, cuidado e participação.</span>
+          <span class="choose-label">Votar nesta chapa <span aria-hidden="true">→</span></span>
+        </button>
+        <button class="slate-card society" type="button" data-slate="sociedade" aria-pressed="false">
+          <span class="slate-number">CHAPA 02</span>
+          <span class="slate-symbol" aria-hidden="true">✦</span>
+          <span class="slate-name">Sociedade Estudantil</span>
+          <span class="slate-desc">Ideias e ações para todos.</span>
+          <span class="choose-label">Votar nesta chapa <span aria-hidden="true">→</span></span>
+        </button>
+        <button class="slate-card youth" type="button" data-slate="revolucao" aria-pressed="false">
+          <span class="slate-number">CHAPA 03</span>
+          <span class="slate-symbol" aria-hidden="true">⚡</span>
+          <span class="slate-name">Revolução Jovem</span>
+          <span class="slate-desc">Juventude com novas ideias.</span>
+          <span class="choose-label">Votar nesta chapa <span aria-hidden="true">→</span></span>
+        </button>
+      </div>
+      <div class="vote-action">
+        <p id="selection-status" role="status">Escolha uma chapa para continuar.</p>
+        <button id="confirm-vote" class="primary-button" type="button" disabled>Confirmar meu voto <span aria-hidden="true">→</span></button>
+      </div>
+      <div id="success-panel" class="success-panel" role="status" aria-live="polite" hidden>
+        <span class="success-icon">✓</span>
+        <div><h3>Voto registrado!</h3><p>Obrigado por participar da eleição do Grêmio Estudantil.</p></div>
+        <button id="next-voter" class="secondary-button" type="button">Próximo aluno</button>
+      </div>
+    </section>
+
+    <section class="notice">
+      <span class="notice-icon" aria-hidden="true">i</span>
+      <p><strong>Orientação:</strong> vote uma única vez. O fiscal deve acompanhar o processo e liberar a tela para o próximo aluno após cada voto.</p>
+    </section>
+    <footer class="page-footer">
+      <span>Uma escola melhor se constrói com participação.</span>
+      <button id="show-results" class="results-button" type="button">Exibir resultado</button>
+    </footer>
+  </main>
+
+  <dialog id="confirm-dialog" class="dialog">
+    <form method="dialog" class="dialog-content">
+      <span class="dialog-icon">?</span>
+      <span class="section-kicker">CONFIRMAÇÃO DE VOTO</span>
+      <h2 id="confirm-heading">Confirmar escolha?</h2>
+      <p id="confirm-copy">Depois de confirmar, seu voto será registrado e não poderá ser alterado nesta sessão.</p>
+      <div class="dialog-actions">
+        <button class="secondary-button" value="cancel">Voltar</button>
+        <button id="final-confirm" class="primary-button" value="confirm">Confirmar voto</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="password-dialog" class="dialog">
+    <form id="password-form" class="dialog-content">
+      <span class="dialog-icon lock-icon">⌑</span>
+      <span class="section-kicker">ACESSO DA FISCALIZAÇÃO</span>
+      <h2>Resultado da eleição</h2>
+      <p>Digite a senha autorizada para consultar a apuração.</p>
+      <label class="field-label" for="admin-password">Senha de acesso</label>
+      <input id="admin-password" type="password" autocomplete="current-password" placeholder="Digite a senha" required>
+      <p id="password-error" class="error-message" role="alert" hidden>Senha incorreta. Tente novamente.</p>
+      <div class="dialog-actions">
+        <button id="cancel-password" class="secondary-button" type="button">Cancelar</button>
+        <button class="primary-button" type="submit">Ver resultado</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="results-dialog" class="dialog results-dialog">
+    <div class="dialog-content">
+      <span class="section-kicker">APURAÇÃO</span>
+      <h2>Resultado da eleição</h2>
+      <p class="results-subtitle">Votos registrados neste navegador.</p>
+      <div id="results-list" class="results-list"></div>
+      <div class="total-votes"><span>Total de votos</span><strong id="total-votes">0</strong></div>
+      <p class="results-warning">Os dados ficam salvos apenas neste navegador e computador. Faça uma cópia da apuração antes de limpar os dados do navegador.</p>
+      <div class="dialog-actions stacked-mobile">
+        <button id="export-results" class="secondary-button" type="button">Baixar apuração CSV</button>
+        <button id="close-results" class="primary-button" type="button">Fechar</button>
+      </div>
+    </div>
+  </dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
