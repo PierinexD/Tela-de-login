@@ -157,26 +157,8 @@
   }
 
   document.querySelector("#show-results").addEventListener("click", () => openAdminPrompt("results"));
-  document.querySelector("#reset-votes").addEventListener("click", async () => {
-    try {
-      openAdminPrompt("reset");
-      if (!passwordDialog.open) throw new Error("password_dialog_did_not_open");
-    } catch (_) {
-      // Fallback for browsers or cached markup where the dialog cannot open.
-      const entered = window.prompt("Digite a senha administrativa para resetar a votação:");
-      if (!entered) return;
-      try {
-        await api("results", { password: entered });
-        const accepted = window.confirm("ATENÇÃO: isso apagará todos os votos da eleição em todos os dispositivos e não poderá ser desfeito. Deseja realmente zerar a votação?");
-        if (!accepted) return;
-        const reset = await api("reset", { password: entered, confirm: true });
-        showToast("Votação zerada no banco central. Registros removidos: " + (reset.deleted ?? 0) + ".");
-      } catch (error) {
-        showToast(error.status === 401 || error.message === "invalid_admin_password"
-          ? "Senha administrativa incorreta."
-          : "Não foi possível resetar a votação. Verifique a conexão e tente novamente.");
-      }
-    }
+  document.querySelector("#reset-votes").addEventListener("click", () => {
+    openAdminPrompt("reset");
   });
   document.querySelector("#cancel-password").addEventListener("click", () => passwordDialog.close());
 
@@ -197,8 +179,14 @@
           return;
         }
         const reset = await api("reset", { password: adminPassword, confirm: true });
+        // Confirm the reset against the database before telling the operator it worked.
+        const verification = await api("results", { password: adminPassword });
         adminPassword = "";
-        showToast("Votação zerada no banco central. Registros removidos: " + (reset.deleted ?? 0) + ".");
+        const remaining = Number(verification.total);
+        if (reset.ok !== true || !Number.isFinite(remaining) || remaining !== 0) {
+          throw new Error("reset_not_verified");
+        }
+        showToast("Votação zerada com sucesso. Registros removidos: " + (reset.deleted ?? 0) + ". Total confirmado no banco: 0.");
         return;
       }
 
@@ -211,8 +199,8 @@
       if (error.status === 401 || error.message === "invalid_admin_password") {
         document.querySelector("#password-error").hidden = false;
         document.querySelector("#admin-password").select();
-      } else if (error.message === "reset_failed") {
-        showToast("O servidor não conseguiu zerar os votos. Nenhum sucesso foi informado; tente novamente.");
+      } else if (error.message === "reset_failed" || error.message === "reset_not_verified") {
+        showToast("O reset não foi confirmado pelo banco. Os votos podem continuar registrados; tente novamente e confira o resultado.");
       } else if (error.message === "results_unavailable") {
         showToast("Não foi possível consultar a apuração central. Tente novamente.");
       } else {
